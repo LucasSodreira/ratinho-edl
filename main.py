@@ -1,4 +1,5 @@
 import pygame
+from rato import Rato
 
 def criar_labirinto(arquivo):
     with open(arquivo, "r") as f:
@@ -24,6 +25,26 @@ def encontrar_posicao_inicial(labirinto):
         for j in range(len(labirinto[i])):
             if labirinto[i][j] == 'm':
                 return (j, i)  # Invertendo as coordenadas para corresponder à ordem (x, y)
+            
+
+def solve_maze(maze, x, y, path):
+    if x < 0 or y < 0 or x >= len(maze) or y >= len(maze[0]) or maze[y][x] == 1:
+        return False
+
+    if maze[y][x] == 'e' or maze[y][x] == 's':
+        return True
+
+    if (x, y) in path:
+        return False
+
+    path.append((x, y))
+
+    for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+        if solve_maze(maze, x + dx, y + dy, path):
+            return True
+
+    path.pop()
+    return False
 
 def main():
     # Inicialização do PyGame
@@ -31,6 +52,16 @@ def main():
 
     FPS = 30
     clock = pygame.time.Clock()
+    
+
+    frames = [pygame.image.load('person/frame-1.png'), 
+              pygame.image.load('person/frame-2.png'),
+              pygame.image.load('person/frame-3.png'), 
+              pygame.image.load('person/frame-4.png')]
+
+    frame_index = 0
+    frame_change_delay = 1  # Altere isso para ajustar a velocidade da animação
+    frame_counter = 0
 
     l = criar_labirinto("labirinto.txt")
 
@@ -48,14 +79,17 @@ def main():
 
     # Calcula a posição inicial do rato
     posicao_inicial = encontrar_posicao_inicial(l)
-    rato = pygame.Rect(posicao_inicial[0] * largura_celula, posicao_inicial[1] * altura_celula, largura_celula, altura_celula)
-
+    
     # Define a direção do rato
     global direcao
     direcao = pygame.Vector2(0, altura_celula)
 
     # Define o retângulo que representa as dimensões do labirinto
     labirinto = pygame.Rect(0, 0, largura_tela, altura_tela)
+    
+    rato = Rato(frames, posicao_inicial[0] * largura_celula, posicao_inicial[1] * altura_celula, largura_celula, altura_celula)
+    grupo_de_sprites = pygame.sprite.Group()
+    grupo_de_sprites.add(rato)
     
     # Laço principal do jogo
     while True:
@@ -65,34 +99,35 @@ def main():
                 pygame.quit()
                 quit()
 
-        # Move o rato
-        rato.move_ip(direcao)
+        frame_counter += 4
 
-        # Verifica se o rato colidiu com o labirinto
-        if rato.colliderect(labirinto):
-            # Reverta a última movimentação para evitar colisão
-            rato.move_ip(-direcao.x, -direcao.y)
-            # Vire o rato 90 graus
-            virar()
+        if frame_counter <= frame_change_delay:
+            frame_index = (frame_index + 1) % len(frames)
+            frame_counter = 0
+
+        path = []  # Para armazenar o caminho da resolução
+        solve_maze(l, posicao_inicial[0], posicao_inicial[1], path)
 
         # Desenha o jogo na tela
-        tela.fill((1, 0, 0))
+        tela.fill((0, 0, 0))
         
         for i in range(len(l)):
             for j in range(len(l[0])):
                 if l[i][j] == 0:
-                    pygame.draw.rect(tela, (25, 0, 0), (j * largura_celula, i * altura_celula, largura_celula, altura_celula))
-                elif l[i][j] == 1:
                     pygame.draw.rect(tela, (255, 255, 255), (j * largura_celula, i * altura_celula, largura_celula, altura_celula))
+                elif l[i][j] == 1:
+                    pygame.draw.rect(tela, (0, 0, 0), (j * largura_celula, i * altura_celula, largura_celula, altura_celula))
+                elif l[i][j] == 'e':
+                    pygame.draw.rect(tela, (0, 255, 0), (j * largura_celula, i * altura_celula, largura_celula, altura_celula))                    
 
-        pygame.draw.rect(tela, (255, 0, 0), rato)
+        # Desenhe o rato do grupo de sprites
+        grupo_de_sprites.draw(tela)
+        
+        if path:
+            rato.rect.topleft = path[0][0] * largura_celula, path[0][1] * altura_celula
+        
         pygame.display.update()
         clock.tick(FPS)
-
-# Vira o rato 90 graus para a esquerda
-def virar():
-    global direcao
-    direcao = direcao.rotate(90)
-
+        
 if __name__ == "__main__":
     main()
