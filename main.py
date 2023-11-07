@@ -1,5 +1,5 @@
 import pygame
-from rato import Rato
+from imgs import *
 
 def criar_labirinto(arquivo):
     with open(arquivo, "r") as f:
@@ -14,9 +14,11 @@ def criar_labirinto(arquivo):
                 elif c == '1':
                     linha_labirinto.append(1)
                 elif c == 'e':
-                    linha_labirinto.append('e')  # Usamos um caractere para representar a saída
+                    # Usamos um caractere para representar a saída
+                    linha_labirinto.append('e')
                 elif c == 'm':
-                    linha_labirinto.append('m')  # Usamos um caractere para representar a posição do rato
+                    # Usamos um caractere para representar a posição do rato
+                    linha_labirinto.append('m')
             labirinto.append(linha_labirinto)
     return labirinto
 
@@ -24,14 +26,22 @@ def encontrar_posicao_inicial(labirinto):
     for i in range(len(labirinto)):
         for j in range(len(labirinto[i])):
             if labirinto[i][j] == 'm':
-                return (j, i)  # Invertendo as coordenadas para corresponder à ordem (x, y)
-            
+                # Invertendo as coordenadas para corresponder à ordem (x, y)
+                return (j, i)
 
-def solve_maze(maze, x, y, path):
-    if x < 0 or y < 0 or x >= len(maze) or y >= len(maze[0]) or maze[y][x] == 1:
+cache = {}
+
+def is_valid(x, y, maze):
+    return 0 <= x < len(maze[0]) and 0 <= y < len(maze)
+
+def find_exit(maze, x, y, path, correct_path, wrong_path):
+    if not is_valid(x, y, maze) or maze[y][x] == 1:
         return False
 
-    if maze[y][x] == 'e' or maze[y][x] == 's':
+    if (x, y) in cache:
+        return cache[(x, y)]
+
+    if maze[y][x] == 'e':
         return True
 
     if (x, y) in path:
@@ -39,29 +49,45 @@ def solve_maze(maze, x, y, path):
 
     path.append((x, y))
 
-    for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-        if solve_maze(maze, x + dx, y + dy, path):
-            return True
+    if find_exit(maze, x - 1, y, path, correct_path, wrong_path):
+        correct_path.append((x, y))
+        cache[(x, y)] = True
+        return True
+
+    if find_exit(maze, x + 1, y, path, correct_path, wrong_path):
+        correct_path.append((x, y))
+        cache[(x, y)] = True
+        return True
+
+    if find_exit(maze, x, y - 1, path, correct_path, wrong_path):
+        correct_path.append((x, y))
+        cache[(x, y)] = True
+        return True
+
+    if find_exit(maze, x, y + 1, path, correct_path, wrong_path):
+        correct_path.append((x, y))
+        cache[(x, y)] = True
+        return True
+
+    wrong_path.append((x, y))
+    cache[(x, y)] = False
 
     path.pop()
     return False
 
+class Player:
+    def __init__(self, x, y, largura, altura):
+        self.image = pygame.Surface((largura, altura))
+        self.image.fill((0, 0, 255))  # Cor azul para o jogador
+        self.rect = self.image.get_rect()
+        self.rect.topleft = (x, y)
+        self.finished = False  # Adicione um atributo para controlar se o jogador terminou
 def main():
     # Inicialização do PyGame
     pygame.init()
 
     FPS = 30
     clock = pygame.time.Clock()
-    
-
-    frames = [pygame.image.load('person/frame-1.png'), 
-              pygame.image.load('person/frame-2.png'),
-              pygame.image.load('person/frame-3.png'), 
-              pygame.image.load('person/frame-4.png')]
-
-    frame_index = 0
-    frame_change_delay = 1  # Altere isso para ajustar a velocidade da animação
-    frame_counter = 0
 
     l = criar_labirinto("labirinto.txt")
 
@@ -69,8 +95,8 @@ def main():
     num_colunas = len(l[0])
 
     # Calcula o tamanho da tela com base no tamanho do labirinto
-    largura_tela = num_colunas * 50
-    altura_tela = num_linhas * 50
+    largura_tela = num_colunas * 60
+    altura_tela = num_linhas * 60
     tela = pygame.display.set_mode((largura_tela, altura_tela))
 
     # Calcula o tamanho das células do labirinto
@@ -79,55 +105,78 @@ def main():
 
     # Calcula a posição inicial do rato
     posicao_inicial = encontrar_posicao_inicial(l)
-    
-    # Define a direção do rato
-    global direcao
-    direcao = pygame.Vector2(0, altura_celula)
 
-    # Define o retângulo que representa as dimensões do labirinto
-    labirinto = pygame.Rect(0, 0, largura_tela, altura_tela)
-    
-    rato = Rato(frames, posicao_inicial[0] * largura_celula, posicao_inicial[1] * altura_celula, largura_celula, altura_celula)
-    grupo_de_sprites = pygame.sprite.Group()
-    grupo_de_sprites.add(rato)
-    
+    player = Player(posicao_inicial[0] * largura_celula, posicao_inicial[1]
+                    * altura_celula, largura_celula, altura_celula)
+
+    correct_path = []  # Pilha para o caminho correto
+    wrong_path = []    # Pilha para o caminho errado
+
+    # Crie a lista de coordenadas do caminho correto e ordene-as
+    path_coordinates = correct_path[:]
+    path_coordinates.reverse()
+
     # Laço principal do jogo
-    while True:
+    running = True  # Variável para controlar o loop principal
+
+    while running:
+        def redimensionar_imagem(imagem, largura, altura):
+            """Redimensiona a imagem para o tamanho especificado."""
+            return pygame.transform.scale(imagem, (largura, altura))
+        
         # Atualiza o estado do jogo
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
+                running = False  # Se o usuário fechar a janela, encerre o jogo
 
-        frame_counter += 4
+        correct_path = []
+        wrong_path = []
 
-        if frame_counter <= frame_change_delay:
-            frame_index = (frame_index + 1) % len(frames)
-            frame_counter = 0
-
-        path = []  # Para armazenar o caminho da resolução
-        solve_maze(l, posicao_inicial[0], posicao_inicial[1], path)
+        find_exit(l, posicao_inicial[0], posicao_inicial[1], [], correct_path, wrong_path)
 
         # Desenha o jogo na tela
-        tela.fill((0, 0, 0))
-        
+        tela.fill((0,255,32))
+
         for i in range(len(l)):
             for j in range(len(l[0])):
+                # Desenha a imagem correspondente à condição
                 if l[i][j] == 0:
-                    pygame.draw.rect(tela, (255, 255, 255), (j * largura_celula, i * altura_celula, largura_celula, altura_celula))
+                    imagem_redimensionada = redimensionar_imagem(imagem_chao, largura_celula, altura_celula)
+                    tela.blit(imagem_redimensionada, (j * largura_celula, i * altura_celula))
                 elif l[i][j] == 1:
-                    pygame.draw.rect(tela, (0, 0, 0), (j * largura_celula, i * altura_celula, largura_celula, altura_celula))
+                        imagem_redimensionada = redimensionar_imagem(imagen_arvore, largura_celula, altura_celula)
+                        tela.blit(imagem_redimensionada, (j * largura_celula, i * altura_celula))
                 elif l[i][j] == 'e':
-                    pygame.draw.rect(tela, (0, 255, 0), (j * largura_celula, i * altura_celula, largura_celula, altura_celula))                    
+                    imagem_redimensionada = redimensionar_imagem(imagem_casa, largura_celula, altura_celula)
+                    tela.blit(imagem_redimensionada, (j * largura_celula, i * altura_celula))
+                elif l[i][j] == 'm':
+                    imagem_redimensionada = redimensionar_imagem(imagem_casa, largura_celula, altura_celula)
+                    tela.blit(imagem_redimensionada, (j * largura_celula, i * altura_celula))
 
-        # Desenhe o rato do grupo de sprites
-        grupo_de_sprites.draw(tela)
-        
-        if path:
-            rato.rect.topleft = path[0][0] * largura_celula, path[0][1] * altura_celula
-        
+                font = pygame.font.Font(None, 8)
+                text = font.render(f'({j+1},{i+1})', True, (255, 255, 255))
+                text_rect = text.get_rect(center=(
+                    j * largura_celula + largura_celula // 2, i * altura_celula + altura_celula // 2))
+                tela.blit(text, text_rect)
+
+        tela.blit(player.image, player.rect.topleft)
         pygame.display.update()
         clock.tick(FPS)
+
+        print("Caminho correto: ", correct_path)
+        print('\n')
+        print("Caminho errado: ", wrong_path)
         
+        for x, y in correct_path:
+            pygame.draw.rect(tela, (0, 0, 255), (x * largura_celula, y * altura_celula, largura_celula, altura_celula))
+            pygame.display.update()  # Atualize a tela para mostrar o retângulo
+            pygame.time.delay(50)
+            
+        for x, y in wrong_path: 
+            pygame.draw.rect(tela, (25, 25, 0), (x * largura_celula, y * altura_celula, largura_celula, altura_celula))
+            pygame.display.update()  # Atualize a tela para mostrar o retângulo
+            pygame.time.delay(50)
+            
+
 if __name__ == "__main__":
     main()
