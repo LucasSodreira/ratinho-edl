@@ -1,79 +1,40 @@
-# Python3 program to solve Rat in a Maze 
-# problem using backtracking 
+def criar_labirinto(arquivo):
+    with open(arquivo, "r") as f:
+        primeira_linha = f.readline().strip().split()
+        altura = int(primeira_linha[0])
+        largura = int(primeira_linha[2])
 
-# Maze size
-N = 4
+        labirinto = []
+        for _ in range(altura):
+            linha = f.readline().strip()
+            linha_labirinto = []
+            for c in linha:
+                if c == '0':
+                    # caractere para representar caminho livre
+                    linha_labirinto.append(0)
+                elif c == '1':
+                    # caractere para representar a parede
+                    linha_labirinto.append(1)
+                elif c == 'e':
+                    # caractere para representar a saída
+                    linha_labirinto.append('e')
+                elif c == 'm':
+                    # caractere para representar a posição do rato
+                    linha_labirinto.append('m')
+            labirinto.append(linha_labirinto)
 
-# A utility function to print solution matrix sol
-def printSolution( sol ):
-	
-	for i in sol:
-		for j in i:
-			print(str(j) + " ", end ="")
-		print("")
+    return labirinto
 
-# A utility function to check if x, y is valid
-# index for N * N Maze
-def isSafe( maze, x, y ):
-	
-	if x >= 0 and x < N and y >= 0 and y < N and maze[x][y] == 1:
-		return True
-	
-	return False
-
-""" This function solves the Maze problem using Backtracking. 
-	It mainly uses solveMazeUtil() to solve the problem. It 
-	returns false if no path is possible, otherwise return 
-	true and prints the path in the form of 1s. Please note
-	that there may be more than one solutions, this function
-	prints one of the feasible solutions. """
-def solveMaze( maze ):
-	
-	# Creating a 4 * 4 2-D list
-	sol = [ [ 0 for j in range(4) ] for i in range(4) ]
-	
-	if solveMazeUtil(maze, 0, 0, sol) == False:
-		print("Solution doesn't exist");
-		return False
-	
-	printSolution(sol)
-	return True
-	
-# A recursive utility function to solve Maze problem
-def solveMazeUtil(maze, x, y, sol):
-	
-	# if (x, y is goal) return True
-	if x == N - 1 and y == N - 1:
-		sol[x][y] = 1
-		return True
-		
-	# Check if maze[x][y] is valid
-	if isSafe(maze, x, y) == True:
-		# mark x, y as part of solution path
-		sol[x][y] = 1
-		
-		# Move forward in x direction
-		if solveMazeUtil(maze, x + 1, y, sol) == True:
-			return True
-			
-		# If moving in x direction doesn't give solution 
-		# then Move down in y direction
-		if solveMazeUtil(maze, x, y + 1, sol) == True:
-			return True
-		
-		# If none of the above movements work then 
-		# BACKTRACK: unmark x, y as part of solution path
-		sol[x][y] = 0
-		return False
-
-# Driver program to test above function
-if __name__ == "__main__":
-	# Initialising the maze
-	maze = [ [1, 0, 0, 0],
-			[1, 1, 0, 1],
-			[0, 1, 0, 0],
-			[1, 1, 1, 1] ]
-			
-	solveMaze(maze)
-
-# This code is contributed by Shiv Shankar
+def encontrar_posicao_inicial(labirinto):
+    for i in range(len(labirinto)):
+        for j in range(len(labirinto[i])):
+            if labirinto[i][j] == 'm':
+                # Invertendo as coordenadas para corresponder à ordem (x, y)
+                return (j, i)
+            
+def encontrar_posicao_saida(labirinto):
+    for i in range(len(labirinto) - 1, -1, -1):
+        for j in range(len(labirinto[i])):
+            if labirinto[i][j] == 'e':
+                # Invertendo as coordenadas para corresponder à ordem (x, y)
+                return (j, i)
