@@ -140,10 +140,10 @@ while running:
     for x, y in path_coordinates:
         pygame.draw.rect(tela, (0, 0, 255), (x * largura_celula, y * altura_celula, largura_celula, altura_celula))
         pygame.display.update()  # Atualize a tela para mostrar o retângulo
-        pygame.time.delay(10)
+        pygame.time.delay(50)
         
     for x, y in wrong_path: 
         pygame.draw.rect(tela, (25, 25, 0), (x * largura_celula, y * altura_celula, largura_celula, altura_celula))
         pygame.display.update()  # Atualize a tela para mostrar o retângulo
-        pygame.time.delay(10)
+        pygame.time.delay(50)
         
