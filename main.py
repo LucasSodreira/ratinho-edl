@@ -79,15 +79,12 @@ altura_celula = altura_tela // num_linhas
 # Calcula a posição inicial do rato
 posicao_inicial = encontrar_posicao_inicial(l)
 posicao_saida = encontrar_posicao_saida(l)
-posicao_atual = encontrar_posicao_inicial(l)
 
 player_image = pygame.image.load('person/frame-1.png')
 player = Player(posicao_inicial[0] * largura_celula, posicao_inicial[1] * altura_celula, player_image)
 
 correct_path = []  # Pilha para o caminho correto
 wrong_path = []    # Pilha para o caminho errado
-
-# Crie a lista de coordenadas do caminho correto e ordene-as
 
 # Laço principal do jogo
 running = True  # Variável para controlar o loop principal
@@ -140,10 +137,10 @@ while running:
     for x, y in path_coordinates:
         pygame.draw.rect(tela, (0, 0, 255), (x * largura_celula, y * altura_celula, largura_celula, altura_celula))
         pygame.display.update()  # Atualize a tela para mostrar o retângulo
-        pygame.time.delay(10)
+        pygame.time.delay(50)
         
     for x, y in wrong_path: 
         pygame.draw.rect(tela, (25, 25, 0), (x * largura_celula, y * altura_celula, largura_celula, altura_celula))
         pygame.display.update()  # Atualize a tela para mostrar o retângulo
-        pygame.time.delay(10)
+        pygame.time.delay(50)
         
