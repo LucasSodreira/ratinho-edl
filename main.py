@@ -80,15 +80,12 @@ altura_celula = altura_tela // num_linhas
 # Calcula a posição inicial do rato
 posicao_inicial = encontrar_posicao_inicial(l)
 posicao_saida = encontrar_posicao_saida(l)
-posicao_atual = encontrar_posicao_inicial(l)
 
 player_image = pygame.image.load('person/frame-1.png')
 player = Player(posicao_inicial[0] * largura_celula, posicao_inicial[1] * altura_celula, player_image)
 
 correct_path = []  # Pilha para o caminho correto
 wrong_path = []    # Pilha para o caminho errado
-
-# Crie a lista de coordenadas do caminho correto e ordene-as
 
 # Laço principal do jogo
 running = True  # Variável para controlar o loop principal
