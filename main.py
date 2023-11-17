@@ -1,4 +1,5 @@
 import pygame
+import sys
 from imgs import *
 from rato import *
 class Player:
@@ -68,8 +69,8 @@ num_linhas = len(l)
 num_colunas = len(l[0])
 
 # Calcula o tamanho da tela com base no tamanho do labirinto
-largura_tela = num_colunas * 30
-altura_tela = num_linhas * 30
+largura_tela = num_colunas * 40
+altura_tela = num_linhas * 40
 tela = pygame.display.set_mode((largura_tela, altura_tela))
 
 # Calcula o tamanho das células do labirinto
@@ -95,15 +96,18 @@ running = True  # Variável para controlar o loop principal
 def redimensionar_imagem(imagem, largura, altura):
     return pygame.transform.scale(imagem, (largura, altura))
 
+find_exit(l, posicao_inicial[0], posicao_inicial[1], [], correct_path, wrong_path)
+
+def fechar_jogo():
+    events = pygame.event.get()
+    for event in events:
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+
 while running:
 
-    # Atualiza o estado do jogo
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False  # Se o usuário fechar a janela, encerre o jogo
-
-    find_exit(l, posicao_inicial[0], posicao_inicial[1], [], correct_path, wrong_path)
-
+    
     path_coordinates = correct_path[:]
     path_coordinates.reverse()
     
@@ -134,8 +138,6 @@ while running:
                 j * largura_celula + largura_celula // 2, i * altura_celula + altura_celula // 2))
             tela.blit(text, text_rect)
             
-    pygame.display.update()
-    clock.tick(FPS)
 
     for x, y in path_coordinates:
         pygame.draw.rect(tela, (0, 0, 255), (x * largura_celula, y * altura_celula, largura_celula, altura_celula))
@@ -146,4 +148,10 @@ while running:
         pygame.draw.rect(tela, (25, 25, 0), (x * largura_celula, y * altura_celula, largura_celula, altura_celula))
         pygame.display.update()  # Atualize a tela para mostrar o retângulo
         pygame.time.delay(50)
+
+        
+    pygame.display.update()
+    clock.tick(FPS)
+    fechar_jogo()
+    
         
