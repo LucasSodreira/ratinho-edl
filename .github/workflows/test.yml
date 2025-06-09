@@ -72,7 +72,8 @@ jobs:
                 else:
                     print(f'Erro de validação: {result[\"erro\"]}')
                 
-                assert result['valido'], f'Labirinto deve ser válido: {result.get(\"erro\", \"Erro desconhecido\")}
+                assert result['valido'], f'Labirinto deve ser válido: {result.get(\"erro\", \"Erro desconhecido\")}'
+
                 print('✓ Teste de carregamento de labirinto passou!')
                 
             except Exception as e:
