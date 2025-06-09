@@ -1,0 +1,132 @@
+name: Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9, '3.10', 3.11]
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python3-dev
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Test import
+      run: |
+        python -c "import pygame; print('Pygame imported successfully')"
+        python -c "from rato import *; print('Rato module imported successfully')"
+        python -c "from imgs import *; print('Imgs module imported successfully')"
+        
+    - name: Test labirinto loading
+      run: |
+        python -c "
+        from rato import criar_labirinto, validar_labirinto
+        import os
+        
+        # Procura por arquivos de labirinto na pasta labirintos e raiz
+        arquivos = [
+            'labirintos/labirinto.txt',
+            'labirintos/labirinto01.txt', 
+            'labirintos/maze64x64.txt',
+            'labirinto.txt',
+            'labirinto01.txt',
+            'maze64x64.txt'
+        ]
+        
+        arquivo_encontrado = None
+        for arquivo in arquivos:
+            if os.path.exists(arquivo):
+                arquivo_encontrado = arquivo
+                print(f'Encontrado arquivo: {arquivo}')
+                break
+        
+        if arquivo_encontrado:
+            try:
+                lab = criar_labirinto(arquivo_encontrado)
+                result = validar_labirinto(lab)
+                print(f'Labirinto {arquivo_encontrado} - Válido: {result[\"valido\"]}')
+                
+                if result['valido']:
+                    print(f'Dimensões: {result[\"dimensoes\"]}')
+                    print(f'Paredes: {result[\"paredes\"]}, Caminhos: {result[\"caminhos_livres\"]}')
+                else:
+                    print(f'Erro de validação: {result[\"erro\"]}')
+                
+                assert result['valido'], f'Labirinto deve ser válido: {result.get(\"erro\", \"Erro desconhecido\")}
+                print('✓ Teste de carregamento de labirinto passou!')
+                
+            except Exception as e:
+                print(f'Erro ao carregar labirinto {arquivo_encontrado}: {e}')
+                raise
+        else:
+            print('⚠️  Nenhum arquivo de labirinto encontrado para teste')
+            print('Arquivos procurados:', arquivos)
+            print('Conteúdo do diretório atual:')
+            for item in os.listdir('.'):
+                print(f'  - {item}')
+            if os.path.exists('labirintos'):
+                print('Conteúdo da pasta labirintos:')
+                for item in os.listdir('labirintos'):
+                    print(f'  - labirintos/{item}')
+        "
+        
+    - name: Test BFS algorithm
+      run: |
+        python -c "
+        from rato import criar_labirinto, bfs_menor_caminho, encontrar_posicao_inicial, encontrar_posicao_saida
+        import os
+        
+        # Testa algoritmo BFS com labirinto simples criado em tempo de execução
+        print('Testando algoritmo BFS...')
+        
+        # Criar um labirinto simples para teste
+        labirinto_teste = [
+            [1, 1, 1, 1, 1],
+            [1, 'm', 0, 0, 1],
+            [1, 0, 1, 0, 1],
+            [1, 0, 0, 'e', 1],
+            [1, 1, 1, 1, 1]
+        ]
+        
+        inicio = encontrar_posicao_inicial(labirinto_teste)
+        fim = encontrar_posicao_saida(labirinto_teste)
+        
+        print(f'Posição inicial: {inicio}')
+        print(f'Posição final: {fim}')
+        
+        caminho, explorados, stats = bfs_menor_caminho(labirinto_teste, inicio, fim)
+        
+        print(f'Caminho encontrado: {len(caminho) > 0}')
+        print(f'Tamanho do caminho: {len(caminho)}')
+        print(f'Células exploradas: {len(explorados)}')
+        
+        if stats:
+            print(f'Tempo de execução: {stats[\"tempo_execucao\"]:.4f}s')
+            print(f'Eficiência: {stats[\"eficiencia\"]:.2%}')
+        
+        assert len(caminho) > 0, 'BFS deve encontrar um caminho no labirinto de teste'
+        assert inicio in caminho, 'Caminho deve incluir posição inicial'
+        assert fim in caminho, 'Caminho deve incluir posição final'
+        
+        print('✓ Teste do algoritmo BFS passou!')
+        "
