@@ -17,8 +17,6 @@ Um projeto educacional em Python que demonstra o algoritmo de **Busca em Largura
 - [Exemplos de Labirintos](#exemplos-de-labirintos)
 - [Controles](#controles)
 - [Estrutura do Projeto](#estrutura-do-projeto)
-- [Contribuindo](#contribuindo)
-- [Licença](#licença)
 
 ## 🎯 Sobre o Projeto
 
