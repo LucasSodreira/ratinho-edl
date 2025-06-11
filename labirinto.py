@@ -1,3 +1,6 @@
+"""
+Gerenciamento de labirintos - carregamento, validação e utilitários
+"""
 import os
 
 class GerenciadorLabirinto:
@@ -19,49 +22,42 @@ class GerenciadorLabirinto:
             ValueError: Se o formato do arquivo for inválido
         """
         if not os.path.exists(arquivo):
-            raise FileNotFoundError(f"Arquivo '{arquivo}' não encontrado!")
+            raise FileNotFoundError(f"Arquivo de labirinto não encontrado: {arquivo}")
         
         try:
-            with open(arquivo, "r", encoding='utf-8') as f:
-                primeira_linha = f.readline().strip()
+            with open(arquivo, 'r', encoding='utf-8') as f:
+                linhas = f.readlines()
+            
+            if not linhas:
+                raise ValueError("Arquivo de labirinto está vazio")
+            
+            # Parse da primeira linha para obter dimensões
+            primeira_linha = linhas[0].strip()
+            altura, largura = GerenciadorLabirinto._parse_dimensoes(primeira_linha)
+            
+            # Processar o labirinto
+            labirinto = []
+            posicao_rato_atual = None
+            posicao_saida_atual = None
+            
+            for linha_num, linha in enumerate(linhas[1:altura+1], 1):
+                linha_labirinto, pos_rato, pos_saida = GerenciadorLabirinto._processar_linha(
+                    linha.strip(), linha_num, posicao_rato_atual, posicao_saida_atual
+                )
                 
-                # Suporta diferentes formatos: "altura x largura", "alturaxlargura", "altura,largura"
-                altura, largura = GerenciadorLabirinto._parse_dimensoes(primeira_linha)
+                if pos_rato:
+                    posicao_rato_atual = pos_rato
+                if pos_saida:
+                    posicao_saida_atual = pos_saida
                 
-                if altura <= 0 or largura <= 0:
-                    raise ValueError("Dimensões do labirinto devem ser positivas")
-
-                print(f"Carregando labirinto: {altura}x{largura}")
-
-                labirinto = []
-                posicao_rato = None
-                posicao_saida = None
-                
-                for linha_num in range(altura):
-                    linha = f.readline().strip()
-                    if not linha:  # Linha vazia
-                        raise ValueError(f"Arquivo tem menos linhas que o esperado. Esperado: {altura}, linha {linha_num + 1} está vazia")
-                    
-                    if len(linha) != largura:
-                        raise ValueError(f"Linha {linha_num + 1} tem tamanho incorreto. Esperado: {largura}, encontrado: {len(linha)}")
-                    
-                    linha_labirinto, pos_rato, pos_saida = GerenciadorLabirinto._processar_linha(
-                        linha, linha_num, posicao_rato, posicao_saida
-                    )
-                    
-                    if pos_rato:
-                        posicao_rato = pos_rato
-                    if pos_saida:
-                        posicao_saida = pos_saida
-                    
-                    labirinto.append(linha_labirinto)
-                
-                if posicao_rato is None:
-                    raise ValueError("Posição do rato ('m') não encontrada no labirinto")
-                if posicao_saida is None:
-                    raise ValueError("Saída ('e') não encontrada no labirinto")
-                    
-                return labirinto
+                labirinto.append(linha_labirinto)
+            
+            # Validar labirinto
+            validacao = GerenciadorLabirinto.validar_labirinto(labirinto)
+            if not validacao['valido']:
+                raise ValueError(f"Labirinto inválido: {validacao['erro']}")
+            
+            return labirinto
                 
         except (ValueError, IOError) as e:
             raise ValueError(f"Erro ao carregar labirinto: {e}")
@@ -70,26 +66,20 @@ class GerenciadorLabirinto:
     def _parse_dimensoes(primeira_linha):
         """Parse das dimensões da primeira linha do arquivo"""
         if 'x' in primeira_linha.lower():
-            partes = primeira_linha.lower().replace('x', ' x ').split()
+            # Formato: "20x30" ou "20 x 30"
+            partes = primeira_linha.lower().replace('x', ' ').split()
         elif ',' in primeira_linha:
-            partes = primeira_linha.replace(',', ' , ').split()
+            # Formato: "20,30" ou "20, 30"
+            partes = primeira_linha.replace(',', ' ').split()
         else:
+            # Formato: "20 30"
             partes = primeira_linha.split()
         
-        if len(partes) < 3:
-            # Tentar formato simples como "18x18"
-            if 'x' in primeira_linha.lower():
-                dimensoes = primeira_linha.lower().split('x')
-                if len(dimensoes) == 2:
-                    altura = int(dimensoes[0].strip())
-                    largura = int(dimensoes[1].strip())
-                else:
-                    raise ValueError("Formato inválido na primeira linha. Esperado: 'altura x largura' ou 'alturaxlargura'")
-            else:
-                raise ValueError("Formato inválido na primeira linha. Esperado: 'altura x largura' ou 'alturaxlargura'")
+        if len(partes) < 2:
+            raise ValueError(f"Formato de dimensões inválido: {primeira_linha}")
         else:
             altura = int(partes[0])
-            largura = int(partes[2])
+            largura = int(partes[1])
         
         return altura, largura
     
@@ -101,22 +91,23 @@ class GerenciadorLabirinto:
         pos_saida = None
         
         for j, c in enumerate(linha):
-            if c == '0':
-                linha_labirinto.append(0)
-            elif c == '1':
-                linha_labirinto.append(1)
-            elif c == 'e':
-                linha_labirinto.append('e')
-                if posicao_saida_atual is not None:
-                    raise ValueError("Múltiplas saídas encontradas no labirinto")
-                pos_saida = (j, linha_num)
-            elif c == 'm':
-                linha_labirinto.append('m')
+            if c == '0' or c == ' ':
+                linha_labirinto.append(0)  # Caminho livre
+            elif c == '1' or c == '#':
+                linha_labirinto.append(1)  # Parede
+            elif c.lower() == 'm':
+                linha_labirinto.append('m')  # Posição do rato
                 if posicao_rato_atual is not None:
-                    raise ValueError("Múltiplas posições do rato encontradas no labirinto")
-                pos_rato = (j, linha_num)
+                    raise ValueError(f"Múltiplas posições de rato encontradas")
+                pos_rato = (j, linha_num - 1)
+            elif c.lower() == 'e':
+                linha_labirinto.append('e')  # Saída
+                if posicao_saida_atual is not None:
+                    raise ValueError(f"Múltiplas saídas encontradas")
+                pos_saida = (j, linha_num - 1)
             else:
-                raise ValueError(f"Caractere inválido '{c}' na linha {linha_num + 1}, posição {j + 1}")
+                # Caractere desconhecido, assumir como parede
+                linha_labirinto.append(1)
         
         return linha_labirinto, pos_rato, pos_saida
     
@@ -126,17 +117,17 @@ class GerenciadorLabirinto:
         for i in range(len(labirinto)):
             for j in range(len(labirinto[i])):
                 if labirinto[i][j] == 'm':
-                    # Invertendo as coordenadas para corresponder à ordem (x, y)
                     return (j, i)
+        return None
                 
     @staticmethod
     def encontrar_posicao_saida(labirinto):
         """Encontra a posição da saída no labirinto"""
         for i in range(len(labirinto) - 1, -1, -1):
-            for j in range(len(labirinto[i])):
+            for j in range(len(labirinto[i]) - 1, -1, -1):
                 if labirinto[i][j] == 'e':
-                    # Invertendo as coordenadas para corresponder à ordem (x, y)
                     return (j, i)
+        return None
     
     @staticmethod
     def validar_labirinto(labirinto):
@@ -147,7 +138,7 @@ class GerenciadorLabirinto:
             dict: Informações sobre a validação
         """
         if not labirinto:
-            return {"valido": False, "erro": "Labirinto vazio"}
+            return {'valido': False, 'erro': 'Labirinto vazio'}
         
         altura = len(labirinto)
         largura = len(labirinto[0]) if altura > 0 else 0
@@ -155,7 +146,10 @@ class GerenciadorLabirinto:
         # Verificar se todas as linhas têm o mesmo tamanho
         for i, linha in enumerate(labirinto):
             if len(linha) != largura:
-                return {"valido": False, "erro": f"Linha {i} tem tamanho inconsistente"}
+                return {
+                    'valido': False, 
+                    'erro': f'Linha {i+1} tem tamanho diferente ({len(linha)} vs {largura})'
+                }
         
         # Contar elementos especiais
         ratos = saidas = 0
@@ -167,21 +161,40 @@ class GerenciadorLabirinto:
                     saidas += 1
         
         if ratos != 1:
-            return {"valido": False, "erro": f"Deve haver exatamente 1 rato, encontrados: {ratos}"}
+            return {'valido': False, 'erro': f'Deve haver exatamente 1 rato, encontrados: {ratos}'}
         if saidas != 1:
-            return {"valido": False, "erro": f"Deve haver exatamente 1 saída, encontradas: {saidas}"}
-        
+            return {'valido': False, 'erro': f'Deve haver exatamente 1 saída, encontradas: {saidas}'}
+
         return {
-            "valido": True,
-            "dimensoes": (largura, altura),
-            "total_celulas": largura * altura,
-            "paredes": sum(linha.count(1) for linha in labirinto),
-            "caminhos_livres": sum(linha.count(0) for linha in labirinto)
+            'valido': True,
+            'altura': altura,
+            'largura': largura,
+            'ratos': ratos,
+            'saidas': saidas
         }
     
     @staticmethod
     def eh_posicao_valida(x, y, labirinto):
-        """Verifica se uma posição é válida no labirinto"""
-        return (0 <= x < len(labirinto[0]) and 
-                0 <= y < len(labirinto) and 
-                labirinto[y][x] != 1)
+        """
+        Verifica se uma posição é válida no labirinto.
+        
+        Args:
+            x, y: Coordenadas a verificar
+            labirinto: Matriz do labirinto
+            
+        Returns:
+            bool: True se a posição é válida e transitável
+        """
+        if not labirinto:
+            return False
+        
+        altura = len(labirinto)
+        largura = len(labirinto[0]) if altura > 0 else 0
+        
+        # Verificar limites
+        if x < 0 or x >= largura or y < 0 or y >= altura:
+            return False
+        
+        # Verificar se não é parede
+        celula = labirinto[y][x]
+        return celula != 1

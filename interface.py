@@ -1,3 +1,6 @@
+"""
+Gerenciamento da interface do usuário
+"""
 import pygame
 
 class GerenciadorInterface:
@@ -40,69 +43,67 @@ class GerenciadorInterface:
     def _obter_status_e_cor(self, estado_jogo):
         """Determina o status atual e sua cor"""
         if not estado_jogo['caminho_encontrado']:
-            if estado_jogo['pausado']:
-                return "❌ CAMINHO NÃO ENCONTRADO - Pressione ESPAÇO para ver exploração", (255, 100, 100)
-            elif estado_jogo['mostrar_exploracao']:
-                return f"Explorando (sem saída)... {estado_jogo['indice_exploracao']}/{len(estado_jogo['caminhos_explorados'])}", (255, 150, 150)
-            else:
-                return "❌ Rato não conseguiu encontrar a saída! Pressione R para tentar outro labirinto", (255, 100, 100)
+            return "❌ Nenhum caminho encontrado", (255, 100, 100)
         elif estado_jogo['pausado']:
-            return "PAUSADO - Pressione ESPAÇO para iniciar", self.config.COR_DESTAQUE
+            return "⏸️ PAUSADO - Pressione ESPAÇO para continuar", (255, 255, 100)
         elif estado_jogo['mostrar_exploracao']:
-            return f"Explorando... {estado_jogo['indice_exploracao']}/{len(estado_jogo['caminhos_explorados'])}", self.config.COR_EXPLORACAO
+            return "🔍 Explorando labirinto...", (255, 150, 100)
         elif estado_jogo['mostrar_caminho_final']:
-            return f"Menor caminho: {estado_jogo['indice_caminho']}/{len(estado_jogo['caminho_final'])} passos", self.config.COR_CAMINHO_FINAL
+            return "✨ Mostrando caminho encontrado...", (100, 255, 100)
         elif estado_jogo['mover_player'] and not estado_jogo['player_finished']:
-            return f"Rato se movendo... {estado_jogo['indice_player']}/{len(estado_jogo['caminho_final'])}", self.config.COR_TEXTO
+            return "🐭 Ratinho seguindo o caminho...", (100, 200, 255)
         elif estado_jogo['player_finished']:
-            return "✓ Saída encontrada! Pressione R para reiniciar", self.config.COR_CAMINHO_FINAL
+            return "🎉 SUCESSO! Ratinho chegou ao destino!", (100, 255, 100)
         else:
-            return "Pronto", self.config.COR_TEXTO
+            return "✅ Pronto para iniciar", (200, 200, 200)
     
     def _desenhar_estatisticas(self, tela, font, estado_jogo, y_offset, largura_tela):
         """Desenha as estatísticas em duas colunas"""
         if estado_jogo['caminho_encontrado']:
-            algoritmo = estado_jogo['estatisticas'].get('algoritmo', 'Desconhecido')
             stats_col1 = [
-                f"Algoritmo: {algoritmo}",
-                f"Nós visitados: {estado_jogo['estatisticas']['nos_visitados']}",
-                f"Tempo: {estado_jogo['estatisticas']['tempo_execucao']:.3f}s"
+                f"Algoritmo: {estado_jogo['estatisticas'].get('algoritmo', 'N/A')}",
+                f"Tempo: {estado_jogo['estatisticas'].get('tempo_execucao', 0):.4f}s"
             ]
             stats_col2 = [
-                f"Eficiência: {estado_jogo['estatisticas']['eficiencia']:.1%}",
-                f"Tamanho célula: {estado_jogo['tamanho_celula']}px"
+                f"Nós visitados: {estado_jogo['estatisticas'].get('nos_visitados', 0)}",
+                f"Caminho: {len(estado_jogo['caminho_final'])} passos"
             ]
         else:
-            algoritmo = estado_jogo['estatisticas'].get('algoritmo', 'Desconhecido')
             stats_col1 = [
-                f"Algoritmo: {algoritmo}",
-                f"Nós explorados: {estado_jogo['estatisticas']['nos_visitados']}",
-                f"Tempo: {estado_jogo['estatisticas']['tempo_execucao']:.3f}s"
+                f"Algoritmo: {estado_jogo['estatisticas'].get('algoritmo', 'N/A')}",
+                "Status: Caminho não encontrado"
             ]
             stats_col2 = [
-                f"Status: Sem caminho disponível",
-                f"Tamanho célula: {estado_jogo['tamanho_celula']}px"
+                f"Nós visitados: {estado_jogo['estatisticas'].get('nos_visitados', 0)}",
+                f"Tempo: {estado_jogo['estatisticas'].get('tempo_execucao', 0):.4f}s"
             ]
         
         # Coluna 1
         for i, stat in enumerate(stats_col1):
-            cor_stat = self.config.COR_TEXTO if estado_jogo['caminho_encontrado'] else (255, 180, 180)
-            texto = font.render(stat, True, cor_stat)
-            tela.blit(texto, (20, y_offset + 30 + i * 20))
+            texto = font.render(stat, True, (200, 200, 200))
+            tela.blit(texto, (20, y_offset + 30 + (i * 18)))
         
         # Coluna 2
         col2_x = largura_tela // 2
         for i, stat in enumerate(stats_col2):
-            cor_stat = self.config.COR_TEXTO if estado_jogo['caminho_encontrado'] else (255, 180, 180)
-            texto = font.render(stat, True, cor_stat)
-            tela.blit(texto, (col2_x, y_offset + 30 + i * 20))
+            texto = font.render(stat, True, (200, 200, 200))
+            tela.blit(texto, (col2_x, y_offset + 30 + (i * 18)))
     
     def _desenhar_controles(self, tela, font, estado_jogo, altura_tela):
         """Desenha os controles na parte inferior"""
         if not estado_jogo['caminho_encontrado']:
-            controles = "❌ Sem saída! | ESPAÇO=Ver busca | R=A* | 1-4=Algoritmos | C=Comparar | F11=Fullscreen | ESC=Sair"
+            controles = [
+                "CONTROLES: [R] Reiniciar | [1-4] Algoritmos | [C] Comparar | [ESC] Sair"
+            ]
         else:
-            controles = "⚡ ESPAÇO=Play/Pause | R=A* | 1-4=Algoritmos | C=Comparar | F11=Fullscreen | ESC=Sair | +/-=Velocidade"
+            controles = [
+                "CONTROLES: [ESPAÇO] Pausar/Continuar | [R] Reiniciar | [F11] Tela cheia | [+/-] Velocidade"
+            ]
         
-        texto_controles = font.render(controles, True, (200, 200, 200))
-        tela.blit(texto_controles, (20, altura_tela - 30))
+        y_controles = altura_tela - 30
+        for i, controle in enumerate(controles):
+            texto = font.render(controle, True, (150, 150, 150))
+            # Centralizar texto
+            texto_rect = texto.get_rect()
+            x_centro = (tela.get_width() - texto_rect.width) // 2
+            tela.blit(texto, (x_centro, y_controles + (i * 20)))

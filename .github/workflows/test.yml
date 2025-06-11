@@ -36,6 +36,8 @@ jobs:
         python -c "import pygame; print('Pygame imported successfully')"
         python -c "from rato import *; print('Rato module imported successfully')"
         python -c "from imgs import *; print('Imgs module imported successfully')"
+        python -c "from pathfinding import GerenciadorPathfinding; print('Pathfinding module imported successfully')"
+        python -c "from labirinto import GerenciadorLabirinto; print('Labirinto module imported successfully')"
         
     - name: Test labirinto loading
       run: |
@@ -67,8 +69,8 @@ jobs:
                 print(f'Labirinto {arquivo_encontrado} - Válido: {result[\"valido\"]}')
                 
                 if result['valido']:
-                    print(f'Dimensões: {result[\"dimensoes\"]}')
-                    print(f'Paredes: {result[\"paredes\"]}, Caminhos: {result[\"caminhos_livres\"]}')
+                    print(f'Dimensões: {result[\"altura\"]}x{result[\"largura\"]}')
+                    print(f'Ratos: {result[\"ratos\"]}, Saídas: {result[\"saidas\"]}')
                 else:
                     print(f'Erro de validação: {result[\"erro\"]}')
                 
@@ -91,14 +93,15 @@ jobs:
                     print(f'  - labirintos/{item}')
         "
         
-    - name: Test BFS algorithm
+    - name: Test pathfinding algorithms
       run: |
         python -c "
-        from rato import criar_labirinto, bfs_menor_caminho, encontrar_posicao_inicial, encontrar_posicao_saida
+        from rato import criar_labirinto, encontrar_posicao_inicial, encontrar_posicao_saida
+        from pathfinding import GerenciadorPathfinding
         import os
         
-        # Testa algoritmo BFS com labirinto simples criado em tempo de execução
-        print('Testando algoritmo BFS...')
+        # Testa algoritmos de pathfinding com labirinto simples criado em tempo de execução
+        print('Testando algoritmos de pathfinding...')
         
         # Criar um labirinto simples para teste
         labirinto_teste = [
@@ -115,19 +118,106 @@ jobs:
         print(f'Posição inicial: {inicio}')
         print(f'Posição final: {fim}')
         
+        # Testar diferentes algoritmos
+        pathfinder = GerenciadorPathfinding()
+        algoritmos = ['bfs', 'bfs_otimizado', 'a_star', 'a_star_euclidiano']
+        
+        for algoritmo in algoritmos:
+            try:
+                print(f'\\nTestando {algoritmo}...')
+                caminho, explorados, stats = pathfinder.encontrar_caminho(labirinto_teste, inicio, fim, algoritmo)
+                
+                print(f'Caminho encontrado: {len(caminho) > 0}')
+                print(f'Tamanho do caminho: {len(caminho)}')
+                print(f'Células exploradas: {len(explorados)}')
+                
+                if stats:
+                    print(f'Tempo de execução: {stats[\"tempo_execucao\"]:.4f}s')
+                    print(f'Algoritmo: {stats[\"algoritmo\"]}')
+                
+                assert len(caminho) > 0, f'{algoritmo} deve encontrar um caminho no labirinto de teste'
+                assert inicio in caminho, f'Caminho do {algoritmo} deve incluir posição inicial'
+                assert fim in caminho, f'Caminho do {algoritmo} deve incluir posição final'
+                
+                print(f'✓ Teste do algoritmo {algoritmo} passou!')
+                
+            except Exception as e:
+                print(f'❌ Erro no teste do algoritmo {algoritmo}: {e}')
+                raise
+        
+        print('✓ Todos os testes de algoritmos passaram!')
+        "
+        
+    - name: Test pathfinding comparison
+      run: |
+        python -c "
+        from rato import encontrar_posicao_inicial, encontrar_posicao_saida
+        from pathfinding import GerenciadorPathfinding
+        
+        # Teste da funcionalidade de comparação de algoritmos
+        print('Testando comparação de algoritmos...')
+        
+        labirinto_teste = [
+            [1, 1, 1, 1, 1, 1, 1],
+            [1, 'm', 0, 0, 0, 0, 1],
+            [1, 0, 1, 1, 1, 0, 1],
+            [1, 0, 0, 0, 0, 0, 1],
+            [1, 1, 1, 0, 1, 1, 1],
+            [1, 0, 0, 0, 0, 'e', 1],
+            [1, 1, 1, 1, 1, 1, 1]
+        ]
+        
+        inicio = encontrar_posicao_inicial(labirinto_teste)
+        fim = encontrar_posicao_saida(labirinto_teste)
+        
+        pathfinder = GerenciadorPathfinding()
+        resultados = pathfinder.comparar_algoritmos(labirinto_teste, inicio, fim)
+        
+        print(f'Algoritmos testados: {len(resultados)}')
+        
+        for algoritmo, resultado in resultados.items():
+            if 'erro' in resultado:
+                print(f'❌ {algoritmo}: {resultado[\"erro\"]}')
+            else:
+                caminho = resultado['caminho']
+                stats = resultado['estatisticas']
+                print(f'✓ {algoritmo}: caminho de {len(caminho)} passos, {stats[\"nos_visitados\"]} nós visitados')
+                
+                assert len(caminho) > 0, f'{algoritmo} deve encontrar caminho na comparação'
+        
+        print('✓ Teste de comparação de algoritmos passou!')
+        "
+        
+    - name: Test backward compatibility
+      run: |
+        python -c "
+        from rato import bfs_menor_caminho, eh_posicao_valida
+        
+        # Teste de compatibilidade com a interface antiga
+        print('Testando compatibilidade com interface antiga...')
+        
+        labirinto_teste = [
+            [1, 1, 1, 1, 1],
+            [1, 'm', 0, 0, 1],
+            [1, 0, 1, 0, 1],
+            [1, 0, 0, 'e', 1],
+            [1, 1, 1, 1, 1]
+        ]
+        
+        inicio = (1, 1)
+        fim = (3, 3)
+        
+        # Teste da função BFS legada
         caminho, explorados, stats = bfs_menor_caminho(labirinto_teste, inicio, fim)
         
-        print(f'Caminho encontrado: {len(caminho) > 0}')
-        print(f'Tamanho do caminho: {len(caminho)}')
-        print(f'Células exploradas: {len(explorados)}')
+        assert len(caminho) > 0, 'BFS legado deve encontrar caminho'
+        assert inicio in caminho, 'Caminho deve incluir início'
+        assert fim in caminho, 'Caminho deve incluir fim'
         
-        if stats:
-            print(f'Tempo de execução: {stats[\"tempo_execucao\"]:.4f}s')
-            print(f'Eficiência: {stats[\"eficiencia\"]:.2%}')
+        # Teste da função de validação de posição
+        assert eh_posicao_valida(1, 1, labirinto_teste), 'Posição válida deve retornar True'
+        assert not eh_posicao_valida(0, 0, labirinto_teste), 'Parede deve retornar False'
+        assert not eh_posicao_valida(-1, -1, labirinto_teste), 'Posição fora dos limites deve retornar False'
         
-        assert len(caminho) > 0, 'BFS deve encontrar um caminho no labirinto de teste'
-        assert inicio in caminho, 'Caminho deve incluir posição inicial'
-        assert fim in caminho, 'Caminho deve incluir posição final'
-        
-        print('✓ Teste do algoritmo BFS passou!')
+        print('✓ Teste de compatibilidade passou!')
         "
